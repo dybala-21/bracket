@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[oc]
+*.egg-info/
+build/
+dist/
+wheels/
+docs/
+
+# Virtual environments
+.venv/
+
+# Bracket run artifacts
+.bracket/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Test / tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage.xml
+htmlcov/
+
+# OS
+.DS_Store

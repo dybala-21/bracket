@@ -1,0 +1,86 @@
+[project]
+name = "bracket"
+version = "0.1.0"
+description = "Execution assurance framework for tool-using AI agents"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12"
+dependencies = []
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+    "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+langchain = ["langchain-core>=0.3"]
+langgraph = ["langgraph>=0.2"]
+google-adk = ["google-adk>=0.1"]
+all = [
+    "langchain-core>=0.3",
+    "langgraph>=0.2",
+    "google-adk>=0.1",
+]
+
+[project.urls]
+Repository = "https://github.com/bracket-framework/bracket"
+Issues = "https://github.com/bracket-framework/bracket/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bracket"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=6.0",
+    "ruff>=0.11",
+    "mypy>=1.15",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=bracket --cov-report=term-missing --cov-report=xml"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "SIM",   # flake8-simplify
+    "TCH",   # flake8-type-checking
+    "RUF",   # ruff-specific
+]
+ignore = [
+    "E501",   # line length handled by formatter
+    "TC001", # moving imports into TYPE_CHECKING breaks runtime
+    "TC003", # same for stdlib imports
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["bracket"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+mypy_path = "src"
+packages = ["bracket"]
