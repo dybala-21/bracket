@@ -1,5 +1,5 @@
 [project]
-name = "bracket"
+name = "bracket-harness"
 version = "0.1.0"
 description = "Execution assurance framework for tool-using AI agents"
 readme = "README.md"
@@ -29,8 +29,8 @@ all = [
 ]
 
 [project.urls]
-Repository = "https://github.com/bracket-framework/bracket"
-Issues = "https://github.com/bracket-framework/bracket/issues"
+Repository = "https://github.com/dybala-21/bracket"
+Issues = "https://github.com/dybala-21/bracket/issues"
 
 [build-system]
 requires = ["hatchling"]

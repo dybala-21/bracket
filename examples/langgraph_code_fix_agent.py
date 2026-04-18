@@ -23,7 +23,7 @@ Output artifacts (.bracket/runs/<run_id>/):
 
 Usage:
 
-    pip install bracket[langgraph] langchain-anthropic
+    pip install bracket-harness[langgraph] langchain-anthropic
     export ANTHROPIC_API_KEY=...
     python examples/langgraph_code_fix_agent.py
 

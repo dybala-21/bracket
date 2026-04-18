@@ -27,10 +27,10 @@ Bracket collects evidence during an agent's execution and mechanically decides p
 ## Install
 
 ```bash
-pip install bracket
+pip install bracket-harness
 ```
 
-Python 3.12+. No external dependencies.
+The import name stays `bracket` (e.g. `from bracket import Harness`). Python 3.12+. No external dependencies for the core.
 
 ## 30-second example
 
@@ -163,10 +163,10 @@ wrapped_tools = handler.wrap_tools([search_web, read_file])
 Optional installs per adapter:
 
 ```bash
-pip install bracket[langchain]
-pip install bracket[langgraph]
-pip install bracket[google-adk]
-pip install bracket[all]
+pip install bracket-harness[langchain]
+pip install bracket-harness[langgraph]
+pip install bracket-harness[google-adk]
+pip install bracket-harness[all]
 ```
 
 For frameworks without an adapter, call `run.record_*` methods directly or use `GenericAdapter`.

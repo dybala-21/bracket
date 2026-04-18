@@ -27,10 +27,10 @@ Bracket은 agent의 실행 과정에서 증거를 수집하고, 사전에 정의
 ## 설치
 
 ```bash
-pip install bracket
+pip install bracket-harness
 ```
 
-Python 3.12+. 외부 의존성 없음.
+import 경로는 `bracket` 그대로 유지된다 (`from bracket import Harness`). Python 3.12+, 코어는 외부 의존성 없음.
 
 ## 30초 예제
 
@@ -163,10 +163,10 @@ wrapped_tools = handler.wrap_tools([search_web, read_file])
 어댑터별 선택 설치:
 
 ```bash
-pip install bracket[langchain]
-pip install bracket[langgraph]
-pip install bracket[google-adk]
-pip install bracket[all]
+pip install bracket-harness[langchain]
+pip install bracket-harness[langgraph]
+pip install bracket-harness[google-adk]
+pip install bracket-harness[all]
 ```
 
 어댑터가 없는 프레임워크는 `run.record_*` 메서드를 직접 호출하거나 `GenericAdapter`를 쓰면 된다.
