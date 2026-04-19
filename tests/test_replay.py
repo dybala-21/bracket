@@ -1,4 +1,4 @@
-"""Replay tests — verify trace_replay recomputes verdict correctly."""
+"""Replay tests: verify trace_replay recomputes verdict correctly."""
 
 import tempfile
 

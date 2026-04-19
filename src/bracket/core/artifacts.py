@@ -93,8 +93,8 @@ class RunArtifact:
     def save(self, base_dir: str | Path) -> Path:
         """Persist the artifact to base_dir/runs/<run_id>/.
 
-        모든 쓰기는 self._write() helper를 통하므로, 향후 ArtifactStore 프로토콜을
-        주입해서 S3/GCS 등 원격 저장소로 라우팅할 수 있다.
+        All writes go through the self._write() helper, so a future
+        ArtifactStore protocol can redirect them to S3, GCS, or similar.
         """
         base = Path(base_dir)
         run_dir = base / "runs" / self.run_id

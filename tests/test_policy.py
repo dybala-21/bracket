@@ -125,7 +125,7 @@ class TestApprovalBroker:
             run = harness.start_run(contract)
             run.record_file_read("a.py", byte_count=1)
 
-            # check_policy triggers approval flow — seqs should be monotonic
+            # check_policy triggers approval flow; seqs must stay monotonic.
             decision = run.check_policy(ActionKind.SHELL, "ls -la")
             assert decision == PolicyDecision.ALLOW
 

@@ -124,7 +124,7 @@ class ExecutionContract:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ExecutionContract:
-        """profile_id로 built-in requirements를 찾고, 없으면 직렬화된 requirements로 복원."""
+        """Resolve requirements from the built-in profile, falling back to the serialized list."""
         from .profiles import get_profile_requirements
 
         profile_id = data.get("profile_id", "")

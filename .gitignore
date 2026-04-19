@@ -6,12 +6,18 @@ build/
 dist/
 wheels/
 docs/
+credentials/
+
 
 # Virtual environments
 .venv/
 
 # Bracket run artifacts
 .bracket/
+
+# Local secrets
+.env
+.env.*
 
 # IDE
 .idea/

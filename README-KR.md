@@ -236,6 +236,46 @@ harness = Harness(
 - `PolicyRule`의 `pattern`은 substring 매칭이다. 모든 리소스와 매칭하려면 `"*"`를 쓰고, 빈 문자열은 거부된다.
 - `record_llm=True`로 저장되는 `llm_calls.json`은 프롬프트/응답을 평문으로 담는다. 민감정보 redaction과 공유 저장소 접근 제어는 호출자 책임이다.
 
+## 예제
+
+`examples/` 디렉토리에 end-to-end로 실행 가능한 예제 3개가 있다. 각각 다른 프로파일과 어댑터를 사용하며, 실제 LLM 호출로 모두 `VERIFIED`까지 도달함을 검증했다.
+
+| 파일 | 프로파일 | 프레임워크 | 테스트에 사용한 모델 |
+|------|----------|------------|----------------------|
+| `langgraph_code_fix_agent.py` | `code_change` | LangGraph 1.x `StateGraph` + retry loop | Claude Sonnet 4.6 |
+| `langchain_research_agent.py` | `research` | LangChain 1.x `create_agent` | Claude Sonnet 4.6 |
+| `google_adk_file_task_agent.py` | `file_task` | Google ADK 1.x `LlmAgent` + `Runner` | Gemini 2.5 Flash (Vertex AI) |
+
+각 예제의 공통점:
+
+- 실제 API 키가 필요하다. 키가 없으면 안내 메시지를 출력하고 exit 0으로 종료된다.
+- 각 프레임워크의 1.x 공식 API만 사용한다 (deprecated 헬퍼 없음).
+- 어댑터가 canonical evidence를 자동 수집한다.
+- agent 실행이 끝난 뒤 호스트 환경을 실제로 확인하는 `Probe`를 최소 1개 실행한다.
+
+`.env` 파일로 로컬에서 실행:
+
+```bash
+# .env
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_APPLICATION_CREDENTIALS=credentials/google-credentials.json
+GOOGLE_GENAI_USE_VERTEXAI=true
+GOOGLE_CLOUD_PROJECT=your-project
+GOOGLE_CLOUD_LOCATION=us-central1
+```
+
+```bash
+uv run --env-file .env --with "langchain>=1.0,<2" --with "langchain-anthropic>=1.0,<2" \
+  python examples/langchain_research_agent.py
+
+uv run --env-file .env --with "langchain-anthropic>=1.0,<2" \
+  python examples/langgraph_code_fix_agent.py
+
+uv run --env-file .env python examples/google_adk_file_task_agent.py
+```
+
+검증 중 LangGraph 예제에서 실제 failure mode가 한 번 재현됐다. LLM이 최소 수정을 하지 않고 대상 함수의 시그니처를 바꾸고 예외 처리를 덧붙였다. 이벤트 레벨의 모든 요구사항(6/6)은 통과했지만 `FilesystemProbe(contains="return 0")`와 `CommandProbe(pytest)`가 모두 `FAIL`을 보고했고 verdict는 `BLOCKED`가 됐다. 프롬프트를 조이자 happy path로 복귀했다. 이벤트 로그만 봤다면 이 실행은 VERIFIED로 판정됐을 것이다 — probe가 그것을 뒤집었다.
+
 ## Bracket이 아닌 것
 
 - Agent 프레임워크가 아니다 (LangGraph, OpenAI Agents SDK 등을 쓰면 된다)

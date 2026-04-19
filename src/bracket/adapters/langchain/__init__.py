@@ -26,8 +26,9 @@ from typing import Any
 from bracket.core.events import EvidenceEvent
 from bracket.core.harness import RunHandle
 
+_LCBaseHandler: Any
 try:
-    from langchain_core.callbacks import BaseCallbackHandler as _LCBaseHandler  # type: ignore[import-not-found]
+    from langchain_core.callbacks import BaseCallbackHandler as _LCBaseHandler
 
     _LC_AVAILABLE = True
 except ImportError:

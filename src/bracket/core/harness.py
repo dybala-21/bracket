@@ -99,9 +99,9 @@ class RunHandle:
         byte_count: int = 0,
         **extra: Any,
     ) -> EvidenceEvent:
-        """read-before-write requirement에 필요한 evidence.
+        """Record a file read. Required for the read-before-write check.
 
-        source: 'tool', 'runtime_cache', 'user_supplied' 중 하나.
+        source is one of: 'tool', 'runtime_cache', 'user_supplied'.
         """
         self._guard_not_finished()
         payload = {"path": path, "source": source, "byte_count": byte_count, **extra}
@@ -114,9 +114,11 @@ class RunHandle:
         artifact_ref: str = "",
         **extra: Any,
     ) -> EvidenceEvent:
-        """change_kind: 'create', 'update', 'delete', 'rename' 중 하나.
+        """Record a file change.
 
-        기존 파일이면 record_file_read()가 먼저 호출되어야 한다.
+        change_kind is one of: 'create', 'update', 'delete', 'rename'.
+        For an existing file, record_file_read() must be called first
+        to satisfy the read-before-write requirement.
         """
         self._guard_not_finished()
         payload = {"path": path, "change_kind": change_kind, "artifact_ref": artifact_ref, **extra}
@@ -184,9 +186,9 @@ class RunHandle:
         cwd: str = ".",
         correlation_id: str | None = None,
     ) -> tuple[EvidenceEvent, EvidenceEvent]:
-        """COMMAND_EXECUTED + COMMAND_RESULT_RECORDED를 correlation_id로 묶어 emit한다.
+        """Emit COMMAND_EXECUTED and COMMAND_RESULT_RECORDED, tied by correlation_id.
 
-        kind: 'verification', 'mutation', 'inspection', 'setup' 중 하나.
+        kind is one of: 'verification', 'mutation', 'inspection', 'setup'.
         """
         self._guard_not_finished()
         corr = correlation_id or f"corr_{uuid.uuid4().hex[:8]}"
@@ -234,10 +236,12 @@ class RunHandle:
         return self.emit(EventType.ARTIFACT_EMITTED, payload)
 
     def check_policy(self, action_kind: ActionKind, resource: str) -> PolicyDecision:
-        """ALLOW면 허용, DENY면 거부, ASK면 approval broker로 해소.
+        """Evaluate the policy for an action against a resource.
 
-        DENY와 ASK-denied 모두 APPROVAL_RESOLVED 이벤트를 evidence store에 기록하므로
-        policy.no_hard_failures requirement가 자동 감지한다.
+        Returns the final decision: ALLOW passes, DENY blocks, and ASK
+        is routed through the approval broker for resolution. Both DENY
+        and ASK-denied emit APPROVAL_RESOLVED into the evidence store so
+        the policy.no_hard_failures requirement picks them up.
         """
         decision, risk_level = self._policy.evaluate(action_kind, resource)
 
@@ -359,7 +363,7 @@ class Harness:
         final_output: str | None = None,
         probes: list[Any] | None = None,
     ) -> RunArtifact:
-        """probes가 있으면 run 종료 후 실행하고, 결과를 verdict에 반영한다."""
+        """Finish the run, execute any probes, and compute the verdict."""
         if not run.finished:
             run.mark_finished(final_output=final_output)
 

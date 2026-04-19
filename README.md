@@ -236,6 +236,46 @@ Defaults: file reads are ALLOW; shell, network, and file writes are ASK or DENY 
 - `PolicyRule.pattern` uses substring matching. Use `"*"` to match all resources; the empty string is rejected.
 - `llm_calls.json` written by `record_llm=True` holds prompts and responses in plaintext. Redacting sensitive data and controlling access to shared storage are the caller's responsibility.
 
+## Examples
+
+Three runnable end-to-end examples live under `examples/`. Each exercises a different profile and adapter, and all three reach `VERIFIED` when run against a live LLM.
+
+| File | Profile | Framework | Model used in testing |
+|------|---------|-----------|------------------------|
+| `langgraph_code_fix_agent.py` | `code_change` | LangGraph 1.x `StateGraph` with retry loop | Claude Sonnet 4.6 |
+| `langchain_research_agent.py` | `research` | LangChain 1.x `create_agent` | Claude Sonnet 4.6 |
+| `google_adk_file_task_agent.py` | `file_task` | Google ADK 1.x `LlmAgent` + `Runner` | Gemini 2.5 Flash (Vertex AI) |
+
+Each example:
+
+- Requires a live API key. Without one, the script prints a notice and exits 0.
+- Uses only the official 1.x APIs of its framework (no deprecated helpers).
+- Records canonical evidence through the corresponding adapter.
+- Runs at least one `Probe` that reads the host environment after the agent finishes.
+
+Run them locally with a `.env` file:
+
+```bash
+# .env
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_APPLICATION_CREDENTIALS=credentials/google-credentials.json
+GOOGLE_GENAI_USE_VERTEXAI=true
+GOOGLE_CLOUD_PROJECT=your-project
+GOOGLE_CLOUD_LOCATION=us-central1
+```
+
+```bash
+uv run --env-file .env --with "langchain>=1.0,<2" --with "langchain-anthropic>=1.0,<2" \
+  python examples/langchain_research_agent.py
+
+uv run --env-file .env --with "langchain-anthropic>=1.0,<2" \
+  python examples/langgraph_code_fix_agent.py
+
+uv run --env-file .env python examples/google_adk_file_task_agent.py
+```
+
+During testing, the LangGraph example caught a real over-engineering failure: the LLM changed the target function's signature instead of applying the minimal fix. Every event-level requirement passed, but `FilesystemProbe(contains="return 0")` and `CommandProbe(pytest)` both reported `FAIL`, and the verdict became `BLOCKED`. A tightened prompt recovered the happy path. The event log alone would have marked this run verified; the probes did not.
+
 ## What Bracket is not
 
 - Not an agent framework (use LangGraph, OpenAI Agents SDK, etc. for that).

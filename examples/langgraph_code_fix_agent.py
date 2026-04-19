@@ -35,8 +35,13 @@ Dry run (no LLM):
 from __future__ import annotations
 
 import operator
+import re
 import sys
+import tempfile
+from pathlib import Path
 from typing import Annotated, Any, TypedDict
+
+from langgraph.graph import END, StateGraph
 
 from bracket import ExecutionContract, Harness, VerdictOutcome
 from bracket.adapters.langgraph import BracketGraphHandler
@@ -60,6 +65,25 @@ class AgentState(TypedDict, total=False):
 
 
 MAX_RETRIES = 2
+
+_CODE_BLOCK_RE = re.compile(r"```(?:python)?\s*\n(.*?)```", re.DOTALL)
+
+
+def _extract_code_block(text: str) -> str:
+    match = _CODE_BLOCK_RE.search(text)
+    return match.group(1) if match else text
+
+
+def _prepare_llm_workdir() -> tuple[str, str]:
+    tmp = tempfile.mkdtemp(prefix="bracket-langgraph-")
+    app_path = Path(tmp) / "app.py"
+    test_path = Path(tmp) / "test_app.py"
+    app_path.write_text("def broken_function():\n    return 1 / 0\n", encoding="utf-8")
+    test_path.write_text(
+        "from app import broken_function\n\ndef test_broken_function():\n    assert broken_function() == 0\n",
+        encoding="utf-8",
+    )
+    return str(app_path), tmp
 
 
 # Harness & Contract
@@ -161,7 +185,7 @@ def make_nodes_llm(handler: BracketGraphHandler) -> dict[str, Any]:
     # but when the graph is invoked with config={"callbacks": [handler.callback]},
     # the callback propagates to child runnables automatically. So model/LLM
     # events are recorded without any explicit record_model_called in nodes.
-    llm = ChatAnthropic(model="claude-sonnet-4-20250514", max_tokens=1024)
+    llm = ChatAnthropic(model="claude-sonnet-4-6", max_tokens=1024)
 
     @handler.node("analyze")
     def analyze(state: AgentState) -> AgentState:
@@ -192,17 +216,23 @@ def make_nodes_llm(handler: BracketGraphHandler) -> dict[str, Any]:
 
     @handler.node("implement")
     def implement(state: AgentState) -> AgentState:
-        target = state.get("target_file", "app.py")
+        target = state["target_file"]
 
         resp = llm.invoke(
-            f"Fix the file below. Output only the code block.\n\n"
+            "Fix the file below. Output ONLY the fixed Python code inside a single ```python ... ``` block.\n"
+            "STRICT CONSTRAINTS:\n"
+            "- Keep the exact function signature `def broken_function():` (no parameters).\n"
+            "- The function body should simply return the integer 0.\n"
+            "- Do not add type hints, exception handling, or docstrings.\n\n"
             f"Current code:\n```python\n{state['file_content']}\n```\n\n"
             f"Fix plan: {state['plan']}"
         )
 
-        patch = resp.content
+        patch = _extract_code_block(str(resp.content))
+        Path(target).write_text(patch, encoding="utf-8")
+
         handler.run.record_file_changed(target, change_kind="update")
-        handler.run.record_artifact(artifact_id=f"patch_{target}", ref=target, kind="file")
+        handler.run.record_artifact(artifact_id=f"patch_{Path(target).name}", ref=target, kind="file")
 
         return {"patch": patch}
 
@@ -210,7 +240,9 @@ def make_nodes_llm(handler: BracketGraphHandler) -> dict[str, Any]:
     def verify(state: AgentState) -> AgentState:
         import subprocess
 
-        command = "pytest tests/ -x"
+        workdir = str(Path(state["target_file"]).parent)
+        command = f"python -m pytest {workdir} -x"
+
         decision = handler.run.check_policy(ActionKind.SHELL, command)
         if decision == PolicyDecision.DENY:
             return {
@@ -220,7 +252,7 @@ def make_nodes_llm(handler: BracketGraphHandler) -> dict[str, Any]:
             }
 
         result = subprocess.run(
-            ["python", "-m", "pytest", "tests/", "-x", "--tb=short"],
+            ["python", "-m", "pytest", workdir, "-x", "--tb=short"],
             capture_output=True,
             text=True,
             timeout=60,
@@ -259,8 +291,6 @@ def make_nodes_llm(handler: BracketGraphHandler) -> dict[str, Any]:
 
 
 def build_graph(nodes: dict[str, Any]) -> Any:
-    from langgraph.graph import END, StateGraph
-
     graph = StateGraph(AgentState)
 
     for name, fn in nodes.items():
@@ -289,17 +319,24 @@ def build_graph(nodes: dict[str, Any]) -> Any:
 
 def run(dry_run: bool = False) -> None:
     task = "Fix the broken_function bug and verify tests pass"
-    target_file = "app.py"
+    workdir: str | None = None
+
+    if dry_run:
+        target_file = "app.py"
+        probes: list[Any] = []
+    else:
+        target_file, workdir = _prepare_llm_workdir()
+        probes = [
+            FilesystemProbe(target_file, should_exist=True, contains="return 0"),
+            CommandProbe(
+                ["python", "-m", "pytest", workdir, "-x"],
+                expected_exit_code=0,
+                timeout=30,
+            ),
+        ]
 
     harness = build_harness()
     contract = build_contract(task)
-
-    probes = []
-    if not dry_run:
-        probes = [
-            FilesystemProbe(target_file),
-            CommandProbe("python -m pytest tests/ -x", expected_exit_code=0, timeout=30),
-        ]
 
     # record_llm=True turns on LLM request/response capture via the callback.
     # Only effective when handler.callback is propagated to LLM invocations
@@ -353,6 +390,11 @@ def run(dry_run: bool = False) -> None:
     print(f"\n[bracket] artifacts saved: .bracket/runs/{handler.run.run_id}/")
     if handler.recorder is not None and handler.recorder.calls:
         print(f"[bracket] llm calls recorded: {len(handler.recorder.calls)} -> llm_calls.json")
+
+    if workdir is not None:
+        import shutil
+
+        shutil.rmtree(workdir, ignore_errors=True)
 
     if v.outcome != VerdictOutcome.VERIFIED:
         print("\n[bracket] verdict: NOT VERIFIED")

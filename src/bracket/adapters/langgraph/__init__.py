@@ -83,9 +83,11 @@ class BracketGraphHandler:
         final_output: str | None = None,
         probes: list[Any] | None = None,
     ) -> RunArtifact:
-        """Uses probes passed here or those from the constructor.
+        """Finish the run and compute the verdict.
 
-        record_llm=True로 생성된 경우, 녹화된 LLM call들을 run dir의 llm_calls.json에 저장한다.
+        Uses probes passed here or the ones supplied to the constructor.
+        When constructed with record_llm=True, recorded LLM calls are
+        written to llm_calls.json inside the run directory.
         """
         all_probes = probes or self._probes
         artifact = self._harness.finish_run_sync(self._run, final_output=final_output, probes=all_probes)

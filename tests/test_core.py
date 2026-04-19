@@ -1,4 +1,4 @@
-"""Core integration tests — verifies the full Bracket pipeline."""
+"""Core integration tests for the full Bracket pipeline."""
 
 import json
 import tempfile
@@ -244,7 +244,7 @@ class TestHarnessEndToEnd:
             contract = ExecutionContract.code_change(goal="Fix test")
 
             run = harness.start_run(contract)
-            # No file read — change without read = violation
+            # Change without prior read violates read-before-write.
             run.record_file_changed("app.py")
             run.record_command("pytest", exit_code=0, kind="verification")
             run.record_tool_success("edit")
